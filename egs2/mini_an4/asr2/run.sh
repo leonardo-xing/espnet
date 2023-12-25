@@ -5,12 +5,13 @@ set -e
 set -u
 set -o pipefail
 # --kmeans_feature "mfcc" \
+# --kmeans_feature="hubert_large_ll60k/12"
 ./asr2.sh \
     --nj 2 \
     --inference_nj 2 \
     --nclusters "10" \
     --use_lm false \
-    --src_lang "mfcc_km10" \
+    --src_lang "hubert" \
     --src_token_type "char" \
     --tgt_token_type "char" \
     --asr_config conf/train_asr_transformer_debug.yaml \

@@ -1287,6 +1287,15 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
     echo "======"
     echo "asr_valid_dir ${_asr_valid_dir}"
 
+    echo "参数是======="
+
+    echo "Checking paths:"
+    echo "${_asr_train_dir}/text.${src_case}.mfcc_km10"
+    echo "${_asr_train_dir}/text.${src_case}.${src_lang}"
+
+    echo "${_asr_train_dir}/text.${tgt_case}.mfcc_km10"
+    echo "${_asr_train_dir}/text.${tgt_case}.${tgt_lang}"
+
     log "Stage 13: ASR Training: train_set=${_asr_train_dir}, valid_set=${_asr_valid_dir}"
 
     _opts=
@@ -1324,15 +1333,13 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
         _opts+="--train_shape_file ${_split_dir}/text_shape.${tgt_token_type} "
         _opts+="--multiple_iterator true "
     else
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},src_text,text " \
-               "--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},huber_text,text " 
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text " \
-               "--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},huber_text,text "
-
-        # _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},src_text,text "
-
-        # _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text "
-        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.mfcc_km10,src_text,text "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},src_text1,text1 "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text " 
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text1,text1 " 
+        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} " 
+        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} " 
+        _opts+="--train_shape_file ${asr_stats_dir}/train/text_shape.${tgt_token_type} "
         _opts+="--train_shape_file ${asr_stats_dir}/train/text_shape.${tgt_token_type} "
     fi
 
