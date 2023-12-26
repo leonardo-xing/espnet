@@ -109,7 +109,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         text_lengths: torch.Tensor,
         src_text: torch.Tensor,
         src_text_lengths: torch.Tensor,
-        hubert: torch.Tensor,  # 添加这一行，表示 hubert 特征
+        hubert: torch.Tensor,  # hubert 特征
         hubert_lengths: torch.Tensor,  
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
@@ -136,7 +136,6 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         # for data-parallel
         text = text[:, : text_lengths.max()]
         src_text = src_text[:, : src_text_lengths.max()]
-
         # 1. Encoder
         encoder_out, encoder_out_lens = self.encode(
                                             src_text, 
@@ -154,8 +153,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         # 1. CTC branch
         if self.ctc_weight != 0.0:
             loss_ctc, cer_ctc = self._calc_ctc_loss(
-                encoder_out, encoder_out_lens, text, text_lengths
-            )
+                encoder_out, encoder_out_lens, text, text_lengths)
 
             # Collect CTC branch stats
             stats["loss_ctc"] = loss_ctc.detach() if loss_ctc is not None else None
@@ -187,8 +185,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
 
         # 2a. Attention-decoder branch (MT)
         loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
-            encoder_out, encoder_out_lens, text, text_lengths
-        )
+            encoder_out, encoder_out_lens, text, text_lengths)
 
         # 3. Loss computation
         if self.ctc_weight > 0.0:
@@ -207,11 +204,10 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
 
-    def encode(
-        self, 
+    def encode(self, 
         src_text: torch.Tensor, 
         src_text_lengths: torch.Tensor,
-        hubert_feats: Optional[torch.Tensor] = None,  # 假设Hubert特征是可选的
+        hubert_feats: Optional[torch.Tensor] = None,  
         hubert_feats_lengths: Optional[torch.Tensor] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Frontend + Encoder. Note that this method is used by mt_inference.py
@@ -219,35 +215,33 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         Args:
             src_text: (Batch, Length, ...)
             src_text_lengths: (Batch, )
-            hubert_feats: (Batch, Length, ...)  # Hubert特征
-            hubert_feats_lengths: (Batch, )  # Hubert特征长度
+            hubert: (Batch, Length, ...)  # Hubert特征
+            hubert_lengths: (Batch, )  # Hubert特征长度
         """
-        # 确保autocast关闭，这是因为Hubert可能使用浮点运算
+        
         with autocast(False):
-            # 1. 提取特征
+            # 1. Extract feats
             feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
 
-            # 如果提供了Hubert特征，合并或处理它们
+            # 提供了Hubert特征，合并或处理它们
             if hubert_feats is not None:
-                # 确保Hubert特征符合预期形状和长度
-                # 这里的实现取决于Hubert特征如何应该被处理
-                # 例如，可以将它们直接与前端特征拼接
+                # 确保Hubert特征符合预期形状和长度,将它们直接与前端特征拼接
                 feats = torch.cat((feats, hubert_feats), dim=-1)
-                # 更新特征长度，这里假设它们是对齐的
+                # 更新特征长度
                 feats_lengths = torch.minimum(feats_lengths, hubert_feats_lengths)
 
-            # 2. 数据增强
+            # 2. Data augmentation
             if self.specaug is not None and self.training:
                 feats, feats_lengths = self.specaug(feats, feats_lengths)
 
-        # 预编码器，例如用于原始输入数据
+        # 预编码器用于原始输入数据
         if self.preencoder is not None:
             feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
-        # 4. 前向编码器
+        # 4. Forward encoder
         encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
         
-        # 后处理编码器，例如NLU
+        # 后处理编码器
         if self.postencoder is not None:
             encoder_out, encoder_out_lens = self.postencoder(encoder_out, encoder_out_lens)
 
@@ -271,7 +265,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
     #         # 1. Extract feats
     #         feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
 
-    #         # 2. Data augmentation
+    #         # 
     #         if self.specaug is not None and self.training:
     #             feats, feats_lengths = self.specaug(feats, feats_lengths)
 
