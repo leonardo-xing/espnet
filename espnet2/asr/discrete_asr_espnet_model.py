@@ -34,6 +34,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         self,
         vocab_size: int,
         token_list: Union[Tuple[str, ...], List[str]],
+        hubert: Optional[AbsEncoder],
         frontend: Optional[AbsFrontend],
         specaug: Optional[AbsSpecAug],
         preencoder: Optional[AbsPreEncoder],
@@ -84,6 +85,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         self.blank_id = 0
         self.ctc_weight = ctc_weight
         self.interctc_weight = interctc_weight
+        self.hubert = hubert
 
         if ctc_weight == 0.0:
             self.ctc = None
@@ -107,6 +109,8 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         text_lengths: torch.Tensor,
         src_text: torch.Tensor,
         src_text_lengths: torch.Tensor,
+        hubert: torch.Tensor,  # 添加这一行，表示 hubert 特征
+        hubert_lengths: torch.Tensor,  
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """Frontend + Encoder + Decoder + Calc loss
@@ -134,7 +138,12 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         src_text = src_text[:, : src_text_lengths.max()]
 
         # 1. Encoder
-        encoder_out, encoder_out_lens = self.encode(src_text, src_text_lengths)
+        encoder_out, encoder_out_lens = self.encode(
+                                            src_text, 
+                                            src_text_lengths,
+                                            hubert,  # 传入hubert特征
+                                            hubert_lengths)
+        # encoder_out, encoder_out_lens = self.encode(src_text, src_text_lengths)
         intermediate_outs = None
         if isinstance(encoder_out, tuple):
             intermediate_outs = encoder_out[1]
@@ -199,60 +208,111 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         return loss, stats, weight
 
     def encode(
-        self, src_text: torch.Tensor, src_text_lengths: torch.Tensor
+        self, 
+        src_text: torch.Tensor, 
+        src_text_lengths: torch.Tensor,
+        hubert_feats: Optional[torch.Tensor] = None,  # 假设Hubert特征是可选的
+        hubert_feats_lengths: Optional[torch.Tensor] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Frontend + Encoder. Note that this method is used by mt_inference.py
 
         Args:
             src_text: (Batch, Length, ...)
             src_text_lengths: (Batch, )
+            hubert_feats: (Batch, Length, ...)  # Hubert特征
+            hubert_feats_lengths: (Batch, )  # Hubert特征长度
         """
+        # 确保autocast关闭，这是因为Hubert可能使用浮点运算
         with autocast(False):
-            # 1. Extract feats
+            # 1. 提取特征
             feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
 
-            # 2. Data augmentation
+            # 如果提供了Hubert特征，合并或处理它们
+            if hubert_feats is not None:
+                # 确保Hubert特征符合预期形状和长度
+                # 这里的实现取决于Hubert特征如何应该被处理
+                # 例如，可以将它们直接与前端特征拼接
+                feats = torch.cat((feats, hubert_feats), dim=-1)
+                # 更新特征长度，这里假设它们是对齐的
+                feats_lengths = torch.minimum(feats_lengths, hubert_feats_lengths)
+
+            # 2. 数据增强
             if self.specaug is not None and self.training:
                 feats, feats_lengths = self.specaug(feats, feats_lengths)
 
-        # Pre-encoder, e.g. used for raw input data
+        # 预编码器，例如用于原始输入数据
         if self.preencoder is not None:
             feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
-        # 4. Forward encoder
-        # feats: (Batch, Length, Dim)
-        # -> encoder_out: (Batch, Length2, Dim2)
-        # encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
-        if self.encoder.interctc_use_conditioning:
-            encoder_out, encoder_out_lens, _ = self.encoder(
-                feats, feats_lengths, ctc=self.ctc
-            )
-        else:
-            encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
-        intermediate_outs = None
-        if isinstance(encoder_out, tuple):
-            intermediate_outs = encoder_out[1]
-            encoder_out = encoder_out[0]
-
-        # Post-encoder, e.g. NLU
+        # 4. 前向编码器
+        encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
+        
+        # 后处理编码器，例如NLU
         if self.postencoder is not None:
-            encoder_out, encoder_out_lens = self.postencoder(
-                encoder_out, encoder_out_lens
-            )
+            encoder_out, encoder_out_lens = self.postencoder(encoder_out, encoder_out_lens)
 
-        assert encoder_out.size(0) == src_text.size(0), (
-            encoder_out.size(),
-            src_text.size(0),
-        )
-        assert encoder_out.size(1) <= encoder_out_lens.max(), (
-            encoder_out.size(),
-            encoder_out_lens.max(),
-        )
-
-        if intermediate_outs is not None:
-            return (encoder_out, intermediate_outs), encoder_out_lens
+        # 校验输出维度
+        assert encoder_out.size(0) == src_text.size(0), (encoder_out.size(), src_text.size(0))
+        assert encoder_out.size(1) <= encoder_out_lens.max(), (encoder_out.size(), encoder_out_lens.max())
 
         return encoder_out, encoder_out_lens
+
+
+    # def encode(
+    #     self, src_text: torch.Tensor, src_text_lengths: torch.Tensor
+    # ) -> Tuple[torch.Tensor, torch.Tensor]:
+    #     """Frontend + Encoder. Note that this method is used by mt_inference.py
+
+    #     Args:
+    #         src_text: (Batch, Length, ...)
+    #         src_text_lengths: (Batch, )
+    #     """
+    #     with autocast(False):
+    #         # 1. Extract feats
+    #         feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
+
+    #         # 2. Data augmentation
+    #         if self.specaug is not None and self.training:
+    #             feats, feats_lengths = self.specaug(feats, feats_lengths)
+
+    #     # Pre-encoder, e.g. used for raw input data
+    #     if self.preencoder is not None:
+    #         feats, feats_lengths = self.preencoder(feats, feats_lengths)
+
+    #     # 4. Forward encoder
+    #     # feats: (Batch, Length, Dim)
+    #     # -> encoder_out: (Batch, Length2, Dim2)
+    #     # encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
+    #     if self.encoder.interctc_use_conditioning:
+    #         encoder_out, encoder_out_lens, _ = self.encoder(
+    #             feats, feats_lengths, ctc=self.ctc
+    #         )
+    #     else:
+    #         encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
+    #     intermediate_outs = None
+    #     if isinstance(encoder_out, tuple):
+    #         intermediate_outs = encoder_out[1]
+    #         encoder_out = encoder_out[0]
+
+    #     # Post-encoder, e.g. NLU
+    #     if self.postencoder is not None:
+    #         encoder_out, encoder_out_lens = self.postencoder(
+    #             encoder_out, encoder_out_lens
+    #         )
+
+    #     assert encoder_out.size(0) == src_text.size(0), (
+    #         encoder_out.size(),
+    #         src_text.size(0),
+    #     )
+    #     assert encoder_out.size(1) <= encoder_out_lens.max(), (
+    #         encoder_out.size(),
+    #         encoder_out_lens.max(),
+    #     )
+
+    #     if intermediate_outs is not None:
+    #         return (encoder_out, intermediate_outs), encoder_out_lens
+
+    #     return encoder_out, encoder_out_lens
 
     def _calc_att_loss(
         self,
