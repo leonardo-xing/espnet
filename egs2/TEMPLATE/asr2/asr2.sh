@@ -1334,12 +1334,9 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
         _opts+="--multiple_iterator true "
     else
         _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.mfcc_km10,src_text,text "
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},src_text1,text1 "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},hubert,text "
         _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text " 
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text1,text1 " 
-        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} " 
-        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} " 
-        _opts+="--train_shape_file ${asr_stats_dir}/train/text_shape.${tgt_token_type} "
+        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} "
         _opts+="--train_shape_file ${asr_stats_dir}/train/text_shape.${tgt_token_type} "
     fi
 
@@ -1378,7 +1375,8 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
             --cleaner "${cleaner}" \
             --g2p "${g2p}" \
             --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${tgt_case}.${tgt_lang},text,text" \
-            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.mfcc_km10,src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},hubert,text" \
             --valid_shape_file "${asr_stats_dir}/valid/text_shape.${tgt_token_type}" \
             --valid_shape_file "${asr_stats_dir}/valid/src_text_shape.${src_token_type}" \
             --resume true \
