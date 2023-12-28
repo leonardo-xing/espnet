@@ -444,7 +444,6 @@ class MTTask(AbsTask):
             decoder=decoder,
             token_list=token_list,
             src_token_list=src_token_list,
-            hubert=None,
             **args.model_conf,
             **extra_model_conf,
         )

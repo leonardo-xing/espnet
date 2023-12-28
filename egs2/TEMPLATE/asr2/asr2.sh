@@ -1227,9 +1227,9 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
 
     # NOTE: --*_shape_file doesn't require length information if --batch_type=unsorted,
     #       but it's used only for deciding the sample ids.
-    echo "stage 11  ${_opts}" 
+    echo "ASR collect-stats started  ${_opts}" 
     echo "========"
-    echo "stage 11  ${asr_args}"
+    echo "ASR collect-stats started  ${asr_args}"
     # shellcheck disable=SC2046,SC2086
     ${train_cmd} JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
         ${python} -m espnet2.bin.mt_train \
@@ -1245,9 +1245,11 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
             --cleaner "${cleaner}" \
             --g2p "${g2p}" \
             --train_data_path_and_name_and_type "${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text" \
-            --train_data_path_and_name_and_type "${_asr_train_dir}/text.${src_case}.${src_lang},src_text,text" \
+            --train_data_path_and_name_and_type "${_asr_train_dir}/text.${src_case}.mfcc_km10,src_text,text" \
+            --train_data_path_and_name_and_type "${_asr_train_dir}/text.${src_case}.${src_lang},hubert,text" \
             --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${tgt_case}.${tgt_lang},text,text" \
-            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.mfcc_km10,src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},hubert,text" \
             --train_shape_file "${_logdir}/train.JOB.scp" \
             --valid_shape_file "${_logdir}/valid.JOB.scp" \
             --output_dir "${_logdir}/stats.JOB" \
@@ -1338,6 +1340,7 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
         _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text " 
         _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} "
         _opts+="--train_shape_file ${asr_stats_dir}/train/text_shape.${tgt_token_type} "
+        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} "  # 添加Hubert形状文件
     fi
 
     log "Generate '${asr_exp}/run.sh'. You can resume the process from stage 13 using this script"
@@ -1379,8 +1382,10 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
             --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},hubert,text" \
             --valid_shape_file "${asr_stats_dir}/valid/text_shape.${tgt_token_type}" \
             --valid_shape_file "${asr_stats_dir}/valid/src_text_shape.${src_token_type}" \
+            --valid_shape_file "${asr_stats_dir}/valid/src_text_shape.${src_token_type}" \
             --resume true \
             --ignore_init_mismatch ${ignore_init_mismatch} \
+            --fold_length "${asr_text_fold_length}" \
             --fold_length "${asr_text_fold_length}" \
             --fold_length "${asr_text_fold_length}" \
             --output_dir "${asr_exp}" \
@@ -1388,6 +1393,7 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
 
 fi
 
+echo "Training finised..."
 
 if [ -n "${download_model}" ]; then
     log "Use ${download_model} for decoding and evaluation"

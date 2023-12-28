@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple, Union
-
+import logging
 import torch
+import torch.nn as nn
 from packaging.version import parse as V
 from typeguard import check_argument_types
 
@@ -26,6 +27,9 @@ else:
     def autocast(enabled=True):
         yield
 
+logfmt = "%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s"
+logging.basicConfig(level=logging.INFO, format=logfmt)
+
 
 class ESPnetDiscreteASRModel(ESPnetMTModel):
     """Encoder-Decoder model"""
@@ -34,7 +38,6 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         self,
         vocab_size: int,
         token_list: Union[Tuple[str, ...], List[str]],
-        hubert: Optional[AbsEncoder],
         frontend: Optional[AbsFrontend],
         specaug: Optional[AbsSpecAug],
         preencoder: Optional[AbsPreEncoder],
@@ -79,14 +82,13 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
             share_decoder_input_output_embed=share_decoder_input_output_embed,
             share_encoder_decoder_input_embed=share_encoder_decoder_input_embed,
         )
-
+        self.reduce_channels_layer = nn.Linear(32, 16)
         self.specaug = specaug
         # note that eos is the same as sos (equivalent ID)
         self.blank_id = 0
         self.ctc_weight = ctc_weight
         self.interctc_weight = interctc_weight
-        self.hubert = hubert
-
+        
         if ctc_weight == 0.0:
             self.ctc = None
         else:
@@ -132,10 +134,15 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         ), (text.shape, text_lengths.shape, src_text.shape, src_text_lengths.shape)
 
         batch_size = src_text.shape[0]
-
+        logging.info(f"是否传入数据")
         # for data-parallel
         text = text[:, : text_lengths.max()]
         src_text = src_text[:, : src_text_lengths.max()]
+
+        hubert = hubert[:, : hubert_lengths.max()]
+
+        logging.info(f"hubert  dimentions {hubert.shape} and src_test dimentiosn is {src_text.shape}")
+
         # 1. Encoder
         encoder_out, encoder_out_lens = self.encode(
                                             src_text, 
@@ -197,7 +204,6 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         stats["acc"] = acc_att
         stats["cer"] = cer_att
         stats["wer"] = wer_att
-
         stats["loss"] = loss.detach()
 
         # force_gatherable: to-device and to-tensor if scalar for DataParallel
@@ -211,25 +217,30 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         hubert_feats_lengths: Optional[torch.Tensor] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Frontend + Encoder. Note that this method is used by mt_inference.py
-
-        Args:
-            src_text: (Batch, Length, ...)
-            src_text_lengths: (Batch, )
-            hubert: (Batch, Length, ...)  # Hubert特征
-            hubert_lengths: (Batch, )  # Hubert特征长度
         """
-        
+        logging.info(f"the src_text before {src_text.shape} the src_text_lenghts {src_text_lengths}")
+        logging.info(f"the hubert_feats before {hubert_feats.shape} the hubert_feats_lengths {hubert_feats_lengths}")
+        logging.info(f"========")
+      
+
         with autocast(False):
             # 1. Extract feats
+
             feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
+            hubert_feats, huber_feats_lengths =  self._extract_feats(hubert_feats, hubert_feats_lengths)
 
-            # 提供了Hubert特征，合并或处理它们
-            if hubert_feats is not None:
-                # 确保Hubert特征符合预期形状和长度,将它们直接与前端特征拼接
-                feats = torch.cat((feats, hubert_feats), dim=-1)
-                # 更新特征长度
-                feats_lengths = torch.minimum(feats_lengths, hubert_feats_lengths)
-
+            logging.info(f"the feats after {feats.shape} the feats_lengths {feats_lengths}")
+            logging.info(f"the hubert_feats after {hubert_feats.shape} the huber_feats_lengths {huber_feats_lengths}")
+        
+            feats = torch.cat((feats, hubert_feats), dim=-1)
+            logging.info(f"feats is before is {feats.shape}")
+            # 更新特征长度
+            feats_lengths = torch.minimum(feats_lengths, hubert_feats_lengths)
+            # 在输入 TransformerEncoder 之前减少通道数
+            # feats = self.reduce_channels_layer(feats.transpose(1, 2)).transpose(1, 2) 
+            feats = self.reduce_channels_layer(feats).transpose(2,1)
+            logging.info(f"feats  after reduction {feats.shape}", )  # 检查尺寸
+            logging.info(f"feature fullison concat...")
             # 2. Data augmentation
             if self.specaug is not None and self.training:
                 feats, feats_lengths = self.specaug(feats, feats_lengths)
@@ -238,9 +249,13 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         if self.preencoder is not None:
             feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
+
         # 4. Forward encoder
+        logging.info(f"staring forward.....")
+
         encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
-        
+
+        logging.info(f"ending forward....")
         # 后处理编码器
         if self.postencoder is not None:
             encoder_out, encoder_out_lens = self.postencoder(encoder_out, encoder_out_lens)
@@ -248,7 +263,9 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         # 校验输出维度
         assert encoder_out.size(0) == src_text.size(0), (encoder_out.size(), src_text.size(0))
         assert encoder_out.size(1) <= encoder_out_lens.max(), (encoder_out.size(), encoder_out_lens.max())
-
+        
+        logging.info(f"finished encoder")
+        # logging.info(f"encoder {encoder_out} encoder_out_lens {encoder_out_lens}" )
         return encoder_out, encoder_out_lens
 
 
@@ -261,6 +278,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
     #         src_text: (Batch, Length, ...)
     #         src_text_lengths: (Batch, )
     #     """
+    #     logging.info("是否执行encode")
     #     with autocast(False):
     #         # 1. Extract feats
     #         feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
