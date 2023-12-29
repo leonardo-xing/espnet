@@ -116,13 +116,6 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """Frontend + Encoder + Decoder + Calc loss
-
-        Args:
-            text: (Batch, Length)
-            text_lengths: (Batch,)
-            src_text: (Batch, length)
-            src_text_lengths: (Batch,)
-            kwargs: "utt_id" is among the input.
         """
         assert text_lengths.dim() == 1, text_lengths.shape
         # Check that batch_size is unified
@@ -132,7 +125,13 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
             == src_text.shape[0]
             == src_text_lengths.shape[0]
         ), (text.shape, text_lengths.shape, src_text.shape, src_text_lengths.shape)
-
+        
+        assert (
+            text.shape[0]
+            == text_lengths.shape[0]
+            == hubert.shape[0]
+            == hubert_lengths.shape[0]
+        ), (text.shape, text_lengths.shape, hubert.shape, hubert_lengths.shape)
         batch_size = src_text.shape[0]
         logging.info(f"是否传入数据")
         # for data-parallel
@@ -141,14 +140,11 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
 
         hubert = hubert[:, : hubert_lengths.max()]
 
-        logging.info(f"hubert  dimentions {hubert.shape} and src_test dimentiosn is {src_text.shape}")
+        logging.info(f"hubertdimentions {hubert.shape} and src_test dimentiosn is {src_text.shape}")
 
         # 1. Encoder
-        encoder_out, encoder_out_lens = self.encode(
-                                            src_text, 
-                                            src_text_lengths,
-                                            hubert,  # 传入hubert特征
-                                            hubert_lengths)
+        encoder_out, encoder_out_lens = self.encode(src_text, src_text_lengths,
+                                            hubert,  hubert_lengths)
         # encoder_out, encoder_out_lens = self.encode(src_text, src_text_lengths)
         intermediate_outs = None
         if isinstance(encoder_out, tuple):
@@ -210,62 +206,50 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
 
-    def encode(self, 
-        src_text: torch.Tensor, 
-        src_text_lengths: torch.Tensor,
-        hubert_feats: Optional[torch.Tensor] = None,  
-        hubert_feats_lengths: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Frontend + Encoder. Note that this method is used by mt_inference.py
-        """
-        logging.info(f"the src_text before {src_text.shape} the src_text_lenghts {src_text_lengths}")
-        logging.info(f"the hubert_feats before {hubert_feats.shape} the hubert_feats_lengths {hubert_feats_lengths}")
-        logging.info(f"========")
-      
+    def encode(self, src_text, src_text_lengths, hubert_feats=None, hubert_feats_lengths=None):
+        # 1. Extract features from src_text
+        feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
 
-        with autocast(False):
-            # 1. Extract feats
+        # 2. If Hubert features are provided, process them
+        if hubert_feats is not None:
+            hubert_feats, hubert_feats_lengths = self._extract_feats(hubert_feats, hubert_feats_lengths)
 
-            feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
-            hubert_feats, huber_feats_lengths =  self._extract_feats(hubert_feats, hubert_feats_lengths)
-
-            logging.info(f"the feats after {feats.shape} the feats_lengths {feats_lengths}")
-            logging.info(f"the hubert_feats after {hubert_feats.shape} the huber_feats_lengths {huber_feats_lengths}")
-        
+            # Concatenate src_text features with Hubert features
             feats = torch.cat((feats, hubert_feats), dim=-1)
-            logging.info(f"feats is before is {feats.shape}")
-            # 更新特征长度
-            feats_lengths = torch.minimum(feats_lengths, hubert_feats_lengths)
-            # 在输入 TransformerEncoder 之前减少通道数
-            # feats = self.reduce_channels_layer(feats.transpose(1, 2)).transpose(1, 2) 
-            feats = self.reduce_channels_layer(feats).transpose(2,1)
-            logging.info(f"feats  after reduction {feats.shape}", )  # 检查尺寸
-            logging.info(f"feature fullison concat...")
-            # 2. Data augmentation
-            if self.specaug is not None and self.training:
-                feats, feats_lengths = self.specaug(feats, feats_lengths)
 
-        # 预编码器用于原始输入数据
+            total_feature_dim = feats.size(-1)
+            logging.info(f"total_feature_dim {total_feature_dim}")
+            expected_feature_dim = self.encoder.output_size()  
+            logging.info(f"expected_feature_dim {expected_feature_dim}")
+
+            batch_size ,time_steps, features = feats.size()
+            feats = feats.view(batch_size * time_steps, features)
+            logging.info(f"firstconvert {feats.shape}")
+            reduction_layer = nn.Linear(features, 16).to(feats.device)
+
+            feats = reduction_layer(feats)
+            logging.info(f"secondconvert {feats.shape}")
+
+            # Restore original shape
+            feats = feats.view(batch_size, time_steps, -1)    
+            logging.info(f"thirdconvert {feats.shape}")
+
+            logging.info(f"tempro is {feats_lengths} , hubert {hubert_feats_lengths}")
+            feats_lengths = torch.minimum(feats_lengths, hubert_feats_lengths)
+            logging.info(f"last_feat_length is {feats_lengths}")
+
+        # 3. Data augmentation
+        if self.specaug is not None and self.training:
+            feats, feats_lengths = self.specaug(feats, feats_lengths)
+
+        # 4. Pre-encoder processing if required
         if self.preencoder is not None:
             feats, feats_lengths = self.preencoder(feats, feats_lengths)
 
-
-        # 4. Forward encoder
-        logging.info(f"staring forward.....")
-
+        # 5. Forward encoder
+        logging.info(f"finaltesor is {feats.shape} and feats_lenghts {feats_lengths}")
         encoder_out, encoder_out_lens, _ = self.encoder(feats, feats_lengths)
 
-        logging.info(f"ending forward....")
-        # 后处理编码器
-        if self.postencoder is not None:
-            encoder_out, encoder_out_lens = self.postencoder(encoder_out, encoder_out_lens)
-
-        # 校验输出维度
-        assert encoder_out.size(0) == src_text.size(0), (encoder_out.size(), src_text.size(0))
-        assert encoder_out.size(1) <= encoder_out_lens.max(), (encoder_out.size(), encoder_out_lens.max())
-        
-        logging.info(f"finished encoder")
-        # logging.info(f"encoder {encoder_out} encoder_out_lens {encoder_out_lens}" )
         return encoder_out, encoder_out_lens
 
 
