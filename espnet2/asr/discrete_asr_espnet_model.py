@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import logging
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from packaging.version import parse as V
 from typeguard import check_argument_types
 
@@ -140,7 +141,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
 
         hubert = hubert[:, : hubert_lengths.max()]
 
-        logging.info(f"hubertdimentions {hubert.shape} and src_test dimentiosn is {src_text.shape}")
+        logging.info(f"hubert dimentions {hubert.shape} and src_test dimentiosn is {src_text.shape}")
 
         # 1. Encoder
         encoder_out, encoder_out_lens = self.encode(src_text, src_text_lengths,
@@ -208,35 +209,63 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
 
     def encode(self, src_text, src_text_lengths, hubert_feats=None, hubert_feats_lengths=None):
         # 1. Extract features from src_text
+        logging.info(f"src_textis {src_text.shape} src_text_lengths {src_text_lengths} ")
         feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
-
+        logging.info(f"something....")
+        logging.info(f"featsis {feats.shape} featus_lenghtis {feats_lengths}")
+        logging.info(f"hubert_featusis {hubert_feats.shape} hubert_feats_lengthsis {hubert_feats_lengths} ")
         # 2. If Hubert features are provided, process them
         if hubert_feats is not None:
-            hubert_feats, hubert_feats_lengths = self._extract_feats(hubert_feats, hubert_feats_lengths)
+            padding_size = feats.size(1) - hubert_feats.size(1)
+            logging.info(f"padding_size {padding_size}")
+            # 在 hubert_feats 的第二维度进行填充,只在最后一个维度之前填充
+            hubert_feats_padded = F.pad(hubert_feats, (0, padding_size))
+            hubert_feats_lengths = torch.full_like(hubert_feats_lengths, src_text.size(1))
+
+            logging.info(f"hubert_feats_padded is {hubert_feats_padded.shape}")
+            hubert_feats, hubert_feats_lengths = self._extract_feats(hubert_feats_padded, hubert_feats_lengths)
+            logging.info(f"after hubert_feats {hubert_feats.shape} hubert_feats_lengths {hubert_feats_lengths}")
 
             # Concatenate src_text features with Hubert features
-            feats = torch.cat((feats, hubert_feats), dim=-1)
+            concatenated_feats = torch.cat((feats, hubert_feats), dim=-1)
+            logging.info(f"concatenated_feats {concatenated_feats.shape}")
 
-            total_feature_dim = feats.size(-1)
-            logging.info(f"total_feature_dim {total_feature_dim}")
-            expected_feature_dim = self.encoder.output_size()  
-            logging.info(f"expected_feature_dim {expected_feature_dim}")
+            total_feature_dim = concatenated_feats.size(-1)
+            # 创建一个线性层，输入特征数为 1024，输出特征数为 512
+            linear_layer = nn.Linear(total_feature_dim, feats.size(2)).to(concatenated_feats.device)
 
-            batch_size ,time_steps, features = feats.size()
-            feats = feats.view(batch_size * time_steps, features)
-            logging.info(f"firstconvert {feats.shape}")
-            reduction_layer = nn.Linear(features, 16).to(feats.device)
+            # 重塑张量以匹配线性层的输入
+            batch_size, time_steps, features = concatenated_feats.size()
+            concatenated_feats = concatenated_feats.view(batch_size * time_steps, features)
 
-            feats = reduction_layer(feats)
-            logging.info(f"secondconvert {feats.shape}")
+            # 应用线性层
+            output_feats = linear_layer(concatenated_feats)
 
-            # Restore original shape
-            feats = feats.view(batch_size, time_steps, -1)    
-            logging.info(f"thirdconvert {feats.shape}")
+            # 恢复原始的批次大小和时间步长维度
+            feats = output_feats.view(batch_size, time_steps, -1)
 
-            logging.info(f"tempro is {feats_lengths} , hubert {hubert_feats_lengths}")
-            feats_lengths = torch.minimum(feats_lengths, hubert_feats_lengths)
-            logging.info(f"last_feat_length is {feats_lengths}")
+            logging.info(f"reconvervalusis  {feats.shape}")
+
+            # total_feature_dim = feats.size(-1)
+            # logging.info(f"total_feature_dim {total_feature_dim}")
+            # expected_feature_dim = self.encoder.output_size()  
+            # logging.info(f"expected_feature_dim {expected_feature_dim}")
+
+            # batch_size ,time_steps, features = feats.size()
+            # feats = feats.view(batch_size * time_steps, features)
+            # logging.info(f"firstconvert {feats.shape}")
+            # reduction_layer = nn.Linear(features, expected_feature_dim)
+
+            # feats = reduction_layer(feats)
+            # logging.info(f"secondconvert {feats.shape}")
+
+            # # Restore original shape
+            # feats = feats.view(batch_size, time_steps, -1)    
+            # logging.info(f"thirdconvert {feats.shape}")
+
+            # logging.info(f"tempro is {feats_lengths} , hubert {hubert_feats_lengths}")
+            # feats_lengths = torch.maximum(feats_lengths, hubert_feats_lengths)
+            # logging.info(f"last_feat_length is {feats_lengths}")
 
         # 3. Data augmentation
         if self.specaug is not None and self.training:
