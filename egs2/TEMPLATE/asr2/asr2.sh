@@ -35,8 +35,8 @@ skip_upload_hf=true  # Skip uploading to hugging face stages.
 eval_valid_set=false # Run decoding for the validation set
 ngpu=1               # The number of gpus ("0" uses cpu, otherwise use gpu).
 num_nodes=1          # The number of nodes.
-nj=32                # The number of parallel jobs.
-inference_nj=32      # The number of parallel jobs in decoding.
+nj=20                # The number of parallel jobs.
+inference_nj=20     # The number of parallel jobs in decoding.
 gpu_inference=false  # Whether to perform gpu decoding.
 dumpdir=dump         # Directory to dump features.
 expdir=exp           # Directory to save experiments.
@@ -1479,6 +1479,8 @@ if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ] && ! [[ " ${skip_stages} " =~
         mkdir -p "${_logdir}"
 
         _scp=text.${src_case}.${src_lang}
+        _scp_wavlm=text.${src_case}.wavlm_large_21_km2000
+        echo "scpis ${_scp_wavlm}"
 
         # 1. Split the key file
         key_file=${_data}/${_scp}
@@ -1495,11 +1497,13 @@ if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ] && ! [[ " ${skip_stages} " =~
         # 2. Submit decoding jobs
         log "Decoding started... log: '${_logdir}/asr_inference.*.log'"
         # shellcheck disable=SC2046,SC2086
+        echo "decoding... is ${_data}/${_scp},src_text,text"
         ${_cmd} --gpu "${_ngpu}" JOB=1:"${_nj}" "${_logdir}"/asr_inference.JOB.log \
             ${python} -m ${asr_inference_tool} \
                 --batch_size ${batch_size} \
                 --ngpu "${_ngpu}" \
-                --data_path_and_name_and_type "${_data}/${_scp},src_text,text" \
+                --data_path_and_name_and_type "${_data}/${_scp},hubert,text" \
+                --data_path_and_name_and_type "${_data}/${_scp_wavlm},src_text,text" \
                 --key_file "${_logdir}"/keys.JOB.scp \
                 --mt_train_config "${asr_exp}"/config.yaml \
                 --mt_model_file "${asr_exp}"/"${inference_asr_model}" \

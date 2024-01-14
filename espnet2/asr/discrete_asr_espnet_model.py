@@ -207,7 +207,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
 
-    def encode(self, src_text, src_text_lengths, hubert_feats=None, hubert_feats_lengths=None):
+    def encode(self, src_text, src_text_lengths, hubert_feats, hubert_feats_lengths):
         # 1. Extract features from src_text
         logging.info(f"src_textis {src_text.shape} src_text_lengths {src_text_lengths} ")
         feats, feats_lengths = self._extract_feats(src_text, src_text_lengths)
