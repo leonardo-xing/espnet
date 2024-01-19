@@ -105,6 +105,8 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
             self.encoder.conditioning_layer = torch.nn.Linear(
                 vocab_size, self.encoder.output_size()
             )
+        
+        self.linear_layer_initialized = False
 
     def forward(
         self,
@@ -232,15 +234,23 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
 
             total_feature_dim = concatenated_feats.size(-1)
             # 创建一个线性层，输入特征数为 1024，输出特征数为 512
-            linear_layer = nn.Linear(total_feature_dim, feats.size(2)).to(concatenated_feats.device)
+            # linear_layer = nn.Linear(total_feature_dim, feats.size(2)).to(concatenated_feats.device)
+
+            # # 重塑张量以匹配线性层的输入
+            # batch_size, time_steps, features = concatenated_feats.size()
+            # concatenated_feats = concatenated_feats.view(batch_size * time_steps, features)
+            if not self.linear_layer_initialized:
+                # 根据concatenated_feats的尺寸动态初始化linear_layer
+                total_feature_dim = concatenated_feats.size(-1)
+                self.linear_layer = nn.Linear(total_feature_dim, feats.size(2)).to(concatenated_feats.device)
+                self.linear_layer_initialized = True  # 设置标志位为True
 
             # 重塑张量以匹配线性层的输入
             batch_size, time_steps, features = concatenated_feats.size()
             concatenated_feats = concatenated_feats.view(batch_size * time_steps, features)
 
-            # 应用线性层
-            output_feats = linear_layer(concatenated_feats)
-
+            # 应用已初始化的线性层
+            output_feats = self.linear_layer(concatenated_feats)
             # 恢复原始的批次大小和时间步长维度
             feats = output_feats.view(batch_size, time_steps, -1)
 
