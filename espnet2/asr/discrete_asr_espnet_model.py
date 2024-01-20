@@ -106,7 +106,7 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
                 vocab_size, self.encoder.output_size()
             )
         
-        self.linear_layer_initialized = False
+        self.feature_reduction_layer = nn.Linear(1024, 512)
 
     def forward(
         self,
@@ -230,29 +230,32 @@ class ESPnetDiscreteASRModel(ESPnetMTModel):
 
             # Concatenate src_text features with Hubert features
             concatenated_feats = torch.cat((feats, hubert_feats), dim=-1)
-            logging.info(f"concatenated_feats {concatenated_feats.shape}")
+            reduced_feats = self.feature_reduction_layer(concatenated_feats)
 
-            total_feature_dim = concatenated_feats.size(-1)
+            # Using scaled features for further processing
+            feats = reduced_feats
+            # logging.info(f"concatenated_feats {concatenated_feats.shape}")
+
+            # total_feature_dim = concatenated_feats.size(-1)
             # 创建一个线性层，输入特征数为 1024，输出特征数为 512
             # linear_layer = nn.Linear(total_feature_dim, feats.size(2)).to(concatenated_feats.device)
 
             # # 重塑张量以匹配线性层的输入
             # batch_size, time_steps, features = concatenated_feats.size()
             # concatenated_feats = concatenated_feats.view(batch_size * time_steps, features)
-            if not self.linear_layer_initialized:
-                # 根据concatenated_feats的尺寸动态初始化linear_layer
-                total_feature_dim = concatenated_feats.size(-1)
-                self.linear_layer = nn.Linear(total_feature_dim, feats.size(2)).to(concatenated_feats.device)
-                self.linear_layer_initialized = True  # 设置标志位为True
+            # if  self.linear_layer is None:
+            #     # 根据concatenated_feats的尺寸动态初始化linear_layer
+            #     total_feature_dim = concatenated_feats.size(-1)
+            #     self.linear_layer = nn.Linear(total_feature_dim, feats.size(2)).to(concatenated_feats.device)
 
-            # 重塑张量以匹配线性层的输入
-            batch_size, time_steps, features = concatenated_feats.size()
-            concatenated_feats = concatenated_feats.view(batch_size * time_steps, features)
+            # # 重塑张量以匹配线性层的输入
+            # batch_size, time_steps, features = concatenated_feats.size()
+            # concatenated_feats = concatenated_feats.view(batch_size * time_steps, features)
 
-            # 应用已初始化的线性层
-            output_feats = self.linear_layer(concatenated_feats)
-            # 恢复原始的批次大小和时间步长维度
-            feats = output_feats.view(batch_size, time_steps, -1)
+            # # 应用已初始化的线性层
+            # output_feats = self.linear_layer(concatenated_feats)
+            # # 恢复原始的批次大小和时间步长维度
+            # feats = output_feats.view(batch_size, time_steps, -1)
 
             logging.info(f"reconvervalusis  {feats.shape}")
 
