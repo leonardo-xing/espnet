@@ -176,7 +176,8 @@ class Text2Text:
 
     @torch.no_grad()
     def __call__(
-        self, src_text: Union[torch.Tensor, np.ndarray]
+        self, src_text: Union[torch.Tensor, np.ndarray],
+        hubert: Union[torch.Tensor, np.ndarray]
     ) -> List[Tuple[Optional[str], List[str], List[int], Hypothesis]]:
         """Inference
 
@@ -192,11 +193,22 @@ class Text2Text:
         if isinstance(src_text, np.ndarray):
             src_text = torch.tensor(src_text)
 
+        if isinstance(hubert, np.ndarray):
+            hubert = torch.tensor(hubert)
         # data: (Nsamples,) -> (1, Nsamples)
         src_text = src_text.unsqueeze(0).to(torch.long)
+        logging.info(f"src_text {src_text.shape}")
+        logging.info(f"scr_text type is {type(src_text)}")
+        hubert_feats = hubert.unsqueeze(0).to(torch.long)
+        logging.info(f"hubert_feat type is {type(hubert_feats)}")
+        # logging(f"huber_feats {hubert_feats.shape}")
         # lengths: (1,)
         lengths = src_text.new_full([1], dtype=torch.long, fill_value=src_text.size(1))
-        batch = {"src_text": src_text, "src_text_lengths": lengths}
+        logging.info(f"lengths {lengths.shape}")
+        hubert_feats_lengths = hubert_feats.new_full([1], dtype=torch.long, fill_value=hubert_feats.size(1))
+        logging.info(f"hubert_feats_lengths {hubert_feats_lengths.shape}" )
+        batch = {"src_text": src_text, "src_text_lengths": lengths,
+                "hubert_feats": hubert_feats, "hubert_feats_lengths": hubert_feats_lengths}
 
         # a. To device
         batch = to_device(batch, device=self.device)

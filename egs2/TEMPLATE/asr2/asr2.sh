@@ -35,9 +35,9 @@ skip_upload_hf=true  # Skip uploading to hugging face stages.
 eval_valid_set=false # Run decoding for the validation set
 ngpu=1               # The number of gpus ("0" uses cpu, otherwise use gpu).
 num_nodes=1          # The number of nodes.
-nj=32                # The number of parallel jobs.
-inference_nj=32      # The number of parallel jobs in decoding.
-gpu_inference=false  # Whether to perform gpu decoding.
+nj=10                # The number of parallel jobs.
+inference_nj=2       # The number of parallel jobs in decoding.
+gpu_inference=true  # Whether to perform gpu decoding.
 dumpdir=dump         # Directory to dump features.
 expdir=exp           # Directory to save experiments.
 python=python3       # Specify python to execute espnet commands.
@@ -57,7 +57,10 @@ fs=16k               # Sampling rate.
 
 # Kmeans related
 kmeans_opts=                # The options given to scripts/feats/perform_kmeans.sh
-kmeans_feature="wavlm_large/21" # format: ssl_model_type/layer_idx (e.g. mfcc, hubert_large/21, wavlm_large/21)
+#kmeans_feature="wavlm_large/21" # format: ssl_model_type/layer_idx (e.g. mfcc, hubert_large/21, wavlm_large/21)
+kmeans_feature="hubert_large_ll60k/12"
+# kmeans_feature="mfcc"
+portion=0.05
 portion=0.1
 nclusters=2000              # The number of clusters for discrete tokenss
 storage_save_mode=true      # Save storage on SSL feature extraction
@@ -71,6 +74,7 @@ sos_eos="<sos/eos>" # sos and eos symbole
 token_joint=false       # whether to use a single bpe system for both source and target languages
 src_case="ts"
 src_token_type=bpe      # Tokenization type (char or bpe) for source languages.
+
 src_nbpe=30             # The number of BPE vocabulary for source language.
 src_bpemode=unigram     # Mode of BPE for source language (unigram or bpe).
 src_bpe_input_sentence_size=100000000 # Size of input sentence for BPE for source language.
@@ -992,7 +996,7 @@ fi
 
 # ========================== Data preparation is done here. ==========================
 
-
+echo "LM collection stats is train_set=${data_feats}/lm_train.txt, dev_set=${lm_dev_text}"
 if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ] && ! [[ " ${skip_stages} " =~ [[:space:]]8[[:space:]] ]]; then
     log "Stage 8: LM collect stats: train_set=${data_feats}/lm_train.txt, dev_set=${lm_dev_text}"
 
@@ -1018,6 +1022,7 @@ if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ] && ! [[ " ${skip_stages} " =~ [
     utils/split_scp.pl "${key_file}" ${split_scps}
 
     key_file="${lm_dev_text}"
+    echo "key_file is ${key_file}"
     split_scps=""
     for n in $(seq ${_nj}); do
         split_scps+=" ${_logdir}/dev.${n}.scp"
@@ -1034,6 +1039,7 @@ if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ] && ! [[ " ${skip_stages} " =~ [
     # NOTE: --*_shape_file doesn't require length information if --batch_type=unsorted,
     #       but it's used only for deciding the sample ids.
     # shellcheck disable=SC2046,SC2086
+
     ${train_cmd} JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
         ${python} -m espnet2.bin.lm_train \
             --collect_stats true \
@@ -1118,7 +1124,6 @@ if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ] && ! [[ " ${skip_stages} " =~ [
     else
         jobname="${lm_exp}/train.log"
     fi
-
     # shellcheck disable=SC2086
     ${python} -m espnet2.bin.launch \
         --cmd "${cuda_cmd} --name ${jobname}" \
@@ -1176,9 +1181,14 @@ fi
 if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~ [[:space:]]12[[:space:]] ]]; then
     _asr_train_dir="${data_feats}/${train_set}"
     _asr_valid_dir="${data_feats}/${valid_set}"
+    echo "_asr_train_dir ${_asr_train_dir}"
+    echo "======="
+    echo "_asr_valid_dir ${_asr_valid_dir}"
+
     log "Stage 12: ASR collect stats: train_set=${_asr_train_dir}, valid_set=${_asr_valid_dir}"
 
     _opts=
+    echo "asr config ${asr_config}"
     if [ -n "${asr_config}" ]; then
         # To generate the config file: e.g.
         #   % python3 -m espnet2.bin.mt_train --print_config --optim adam
@@ -1217,10 +1227,17 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
     # 3. Submit jobs
     log "ASR collect-stats started... log: '${_logdir}/stats.*.log'"
 
+    echo "BPEMODEL ${tgt_bpemodel} and "
+
+
     # NOTE: --*_shape_file doesn't require length information if --batch_type=unsorted,
     #       but it's used only for deciding the sample ids.
-
+    echo "ASR collect-stats started  ${_opts}" 
+    echo "========"
+    echo "ASR collect-stats started  ${asr_args}"
     # shellcheck disable=SC2046,SC2086
+                #  \
+            # 
     ${train_cmd} JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
         ${python} -m espnet2.bin.mt_train \
             --collect_stats true \
@@ -1235,9 +1252,11 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ] && ! [[ " ${skip_stages} " =~
             --cleaner "${cleaner}" \
             --g2p "${g2p}" \
             --train_data_path_and_name_and_type "${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text" \
-            --train_data_path_and_name_and_type "${_asr_train_dir}/text.${src_case}.${src_lang},src_text,text" \
+            --train_data_path_and_name_and_type "${_asr_train_dir}/text.${src_case}.wavlm_large_21_km2000,src_text,text" \
+            --train_data_path_and_name_and_type "${_asr_train_dir}/text.${src_case}.${src_lang},hubert,text" \
             --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${tgt_case}.${tgt_lang},text,text" \
-            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.wavlm_large_21_km2000,src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},hubert,text" \
             --train_shape_file "${_logdir}/train.JOB.scp" \
             --valid_shape_file "${_logdir}/valid.JOB.scp" \
             --output_dir "${_logdir}/stats.JOB" \
@@ -1273,6 +1292,19 @@ fi
 if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~ [[:space:]]13[[:space:]] ]]; then
     _asr_train_dir="${data_feats}/${train_set}"
     _asr_valid_dir="${data_feats}/${valid_set}"
+    echo "asr_train_dir ${_asr_train_dir}"
+    echo "======"
+    echo "asr_valid_dir ${_asr_valid_dir}"
+
+    echo "参数是======="
+
+    echo "Checking paths:"
+    echo "${_asr_train_dir}/text.${src_case}.wavlm_large_21_km2000"
+    echo "${_asr_train_dir}/text.${src_case}.${src_lang}"
+
+    echo "${_asr_train_dir}/text.${tgt_case}.wavlm_large_21_km2000"
+    echo "${_asr_train_dir}/text.${tgt_case}.${tgt_lang}"
+
     log "Stage 13: ASR Training: train_set=${_asr_train_dir}, valid_set=${_asr_valid_dir}"
 
     _opts=
@@ -1304,16 +1336,18 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
             log "${_split_dir}/.done exists. Spliting is skipped"
         fi
 
-        _opts+="--train_data_path_and_name_and_type ${_split_dir}/text.${src_case}.${src_lang},src_text,text "
-        _opts+="--train_data_path_and_name_and_type ${_split_dir}/text.${tgt_case}.${tgt_lang},text,text "
+        _opts+="--train_data_path_and_name_and_type ${_split_dir}/text.${src_case}.${src_lang},src_text,text " 
+        _opts+="--train_data_path_and_name_and_type ${_split_dir}/text.${tgt_case}.${tgt_lang},text,text " 
         _opts+="--train_shape_file ${_split_dir}/src_text_shape.${src_token_type} "
         _opts+="--train_shape_file ${_split_dir}/text_shape.${tgt_token_type} "
         _opts+="--multiple_iterator true "
     else
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},src_text,text "
-        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.wavlm_large_21_km2000,src_text,text "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${src_case}.${src_lang},hubert,text "
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/text.${tgt_case}.${tgt_lang},text,text " 
         _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} "
         _opts+="--train_shape_file ${asr_stats_dir}/train/text_shape.${tgt_token_type} "
+        _opts+="--train_shape_file ${asr_stats_dir}/train/src_text_shape.${src_token_type} " 
     fi
 
     log "Generate '${asr_exp}/run.sh'. You can resume the process from stage 13 using this script"
@@ -1327,9 +1361,12 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
     else
         jobname="${asr_exp}/train.log"
     fi
-
     # TODO(jiatong): fix bpe
     # shellcheck disable=SC2086
+    echo "stage 13 opts  is ${_opts}"
+    echo "======"
+    echo "stage 13 asr_args ${asr_args}"
+
     ${python} -m espnet2.bin.launch \
         --cmd "${cuda_cmd} --name ${jobname}" \
         --log "${asr_exp}"/train.log \
@@ -1349,11 +1386,14 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
             --cleaner "${cleaner}" \
             --g2p "${g2p}" \
             --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${tgt_case}.${tgt_lang},text,text" \
-            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.wavlm_large_21_km2000,src_text,text" \
+            --valid_data_path_and_name_and_type "${_asr_valid_dir}/text.${src_case}.${src_lang},hubert,text" \
             --valid_shape_file "${asr_stats_dir}/valid/text_shape.${tgt_token_type}" \
+            --valid_shape_file "${asr_stats_dir}/valid/src_text_shape.${src_token_type}" \
             --valid_shape_file "${asr_stats_dir}/valid/src_text_shape.${src_token_type}" \
             --resume true \
             --ignore_init_mismatch ${ignore_init_mismatch} \
+            --fold_length "${asr_text_fold_length}" \
             --fold_length "${asr_text_fold_length}" \
             --fold_length "${asr_text_fold_length}" \
             --output_dir "${asr_exp}" \
@@ -1361,6 +1401,7 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
 
 fi
 
+echo "Training finised..."
 
 if [ -n "${download_model}" ]; then
     log "Use ${download_model} for decoding and evaluation"
@@ -1438,6 +1479,8 @@ if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ] && ! [[ " ${skip_stages} " =~
         mkdir -p "${_logdir}"
 
         _scp=text.${src_case}.${src_lang}
+        _scp_wavlm=text.${src_case}.wavlm_large_21_km2000
+        echo "scpis ${_scp_wavlm}"
 
         # 1. Split the key file
         key_file=${_data}/${_scp}
@@ -1454,11 +1497,13 @@ if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ] && ! [[ " ${skip_stages} " =~
         # 2. Submit decoding jobs
         log "Decoding started... log: '${_logdir}/asr_inference.*.log'"
         # shellcheck disable=SC2046,SC2086
+        echo "decoding... is ${_data}/${_scp},src_text,text"
         ${_cmd} --gpu "${_ngpu}" JOB=1:"${_nj}" "${_logdir}"/asr_inference.JOB.log \
             ${python} -m ${asr_inference_tool} \
                 --batch_size ${batch_size} \
                 --ngpu "${_ngpu}" \
-                --data_path_and_name_and_type "${_data}/${_scp},src_text,text" \
+                --data_path_and_name_and_type "${_data}/${_scp},hubert,text" \
+                --data_path_and_name_and_type "${_data}/${_scp_wavlm},src_text,text" \
                 --key_file "${_logdir}"/keys.JOB.scp \
                 --mt_train_config "${asr_exp}"/config.yaml \
                 --mt_model_file "${asr_exp}"/"${inference_asr_model}" \

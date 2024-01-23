@@ -1,0 +1,288 @@
+nohup: ignoring input
+2023-12-25T09:04:32 (asr2.sh:282:main) ./asr2.sh --nj 2 --inference_nj 2 --nclusters 10 --use_lm false --src_lang hubert --src_token_type char --tgt_token_type char --asr_config conf/train_asr_transformer_debug.yaml --inference_config conf/decode_asr_debug.yaml --train_set train_nodev --valid_set train_dev --test_sets train_dev test test_seg --allow_variable_data_keys true --lm_train_text data/train_nodev/text.ts.en --stage 11 --nj 4
+./asr2.sh: invalid option --allow_variable_data_keys
+nohup: ignoring input
+2023-12-25T09:04:58 (asr2.sh:282:main) ./asr2.sh --nj 2 --inference_nj 2 --nclusters 10 --use_lm false --src_lang hubert --src_token_type char --tgt_token_type char --asr_config conf/train_asr_transformer_debug.yaml --inference_config conf/decode_asr_debug.yaml --train_set train_nodev --valid_set train_dev --test_sets train_dev test test_seg --lm_train_text data/train_nodev/text.ts.en --stage 11 --nj 4
+2023-12-25T09:04:59 (asr2.sh:320:main) Info: The valid_set 'train_dev' is included in the test_sets. '--eval_valid_set true' is set and 'train_dev' is removed from the test_sets
+2023-12-25T09:04:59 (asr2.sh:587:main) Skipped stages:  8 9 10 11 16 17 18 
+LM collection stats is train_set=dump/raw/lm_train.txt, dev_set=dump/raw/train_dev/text.ts.en
+_asr_train_dir dump/raw/train_nodev
+=======
+_asr_valid_dir dump/raw/train_dev
+2023-12-25T09:04:59 (asr2.sh:1186:main) Stage 12: ASR collect stats: train_set=dump/raw/train_nodev, valid_set=dump/raw/train_dev
+asr config conf/train_asr_transformer_debug.yaml
+2023-12-25T09:04:59 (asr2.sh:1222:main) Generate 'exp/asr_stats_raw_ts_hubert_char_char/run.sh'. You can resume the process from stage 12 using this script
+2023-12-25T09:04:59 (asr2.sh:1226:main) ASR collect-stats started... log: 'exp/asr_stats_raw_ts_hubert_char_char/logdir/stats.*.log'
+stage 11  --config conf/train_asr_transformer_debug.yaml 
+========
+stage 11  
+/home/espnet/tools/anaconda/envs/espnet/bin/python3 /home/espnet/espnet2/bin/aggregate_stats_dirs.py --input_dir exp/asr_stats_raw_ts_hubert_char_char/logdir/stats.1 --output_dir exp/asr_stats_raw_ts_hubert_char_char
+asr_train_dir dump/raw/train_nodev
+======
+asr_valid_dir dump/raw/train_dev
+参数是=======
+Checking paths:
+dump/raw/train_nodev/text.ts.mfcc_km10
+dump/raw/train_nodev/text.ts.hubert
+dump/raw/train_nodev/text.ts.mfcc_km10
+dump/raw/train_nodev/text.ts.en
+2023-12-25T09:05:03 (asr2.sh:1299:main) Stage 13: ASR Training: train_set=dump/raw/train_nodev, valid_set=dump/raw/train_dev
+2023-12-25T09:05:03 (asr2.sh:1346:main) Generate 'exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/run.sh'. You can resume the process from stage 13 using this script
+2023-12-25T09:05:03 (asr2.sh:1350:main) ASR training started... log: 'exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log'
+stage 13 opts  is --config conf/train_asr_transformer_debug.yaml --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.mfcc_km10,src_text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.hubert,src_text1,text1 --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text1,text1 --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char 
+======
+stage 13 asr_args 
+2023-12-25 09:05:03,852 (launch:94) INFO: /home/espnet/tools/anaconda/envs/espnet/bin/python3 /home/espnet/espnet2/bin/launch.py --cmd 'run.pl --name exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log' --log exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log --ngpu 1 --num_nodes 1 --init_file_prefix exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/.dimt_init_ --multiprocessing_distributed true -- python3 -m espnet2.bin.mt_train --use_preprocessor true --bpemodel none --token_type char --token_list data/token_list/char/tgt_tokens.txt --src_bpemodel none --src_token_type char --src_token_list data/token_list/char_hubert/src_tokens.txt --non_linguistic_symbols none --cleaner none --g2p none --valid_data_path_and_name_and_type dump/raw/train_dev/text.ts.en,text,text --valid_data_path_and_name_and_type dump/raw/train_dev/text.ts.hubert,src_text,text --valid_shape_file exp/asr_stats_raw_ts_hubert_char_char/valid/text_shape.char --valid_shape_file exp/asr_stats_raw_ts_hubert_char_char/valid/src_text_shape.char --resume true --ignore_init_mismatch false --fold_length 150 --fold_length 150 --output_dir exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts --config conf/train_asr_transformer_debug.yaml --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.mfcc_km10,src_text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.hubert,src_text1,text1 --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text1,text1 --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char
+2023-12-25 09:05:03,876 (launch:348) INFO: log file: exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log
+run.pl: job failed, log is in exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log
+Command '['run.pl', '--name', 'exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log', '--gpu', '1', 'exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log', 'python3', '-m', 'espnet2.bin.mt_train', '--use_preprocessor', 'true', '--bpemodel', 'none', '--token_type', 'char', '--token_list', 'data/token_list/char/tgt_tokens.txt', '--src_bpemodel', 'none', '--src_token_type', 'char', '--src_token_list', 'data/token_list/char_hubert/src_tokens.txt', '--non_linguistic_symbols', 'none', '--cleaner', 'none', '--g2p', 'none', '--valid_data_path_and_name_and_type', 'dump/raw/train_dev/text.ts.en,text,text', '--valid_data_path_and_name_and_type', 'dump/raw/train_dev/text.ts.hubert,src_text,text', '--valid_shape_file', 'exp/asr_stats_raw_ts_hubert_char_char/valid/text_shape.char', '--valid_shape_file', 'exp/asr_stats_raw_ts_hubert_char_char/valid/src_text_shape.char', '--resume', 'true', '--ignore_init_mismatch', 'false', '--fold_length', '150', '--fold_length', '150', '--output_dir', 'exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts', '--config', 'conf/train_asr_transformer_debug.yaml', '--train_data_path_and_name_and_type', 'dump/raw/train_nodev/text.ts.mfcc_km10,src_text,text', '--train_data_path_and_name_and_type', 'dump/raw/train_nodev/text.ts.hubert,src_text1,text1', '--train_data_path_and_name_and_type', 'dump/raw/train_nodev/text.ts.en,text,text', '--train_data_path_and_name_and_type', 'dump/raw/train_nodev/text.ts.en,text1,text1', '--train_shape_file', 'exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char', '--train_shape_file', 'exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char', '--train_shape_file', 'exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char', '--train_shape_file', 'exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char', '--ngpu', '1', '--multiprocessing_distributed', 'True']' returned non-zero exit status 1.
+Traceback (most recent call last):
+  File "/home/espnet/tools/anaconda/envs/espnet/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/espnet/tools/anaconda/envs/espnet/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/home/espnet/espnet2/bin/launch.py", line 384, in <module>
+    main()
+  File "/home/espnet/espnet2/bin/launch.py", line 375, in main
+    raise RuntimeError(
+RuntimeError: 
+################### The last 1000 lines of exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/train.log ###################
+# python3 -m espnet2.bin.mt_train --use_preprocessor true --bpemodel none --token_type char --token_list data/token_list/char/tgt_tokens.txt --src_bpemodel none --src_token_type char --src_token_list data/token_list/char_hubert/src_tokens.txt --non_linguistic_symbols none --cleaner none --g2p none --valid_data_path_and_name_and_type dump/raw/train_dev/text.ts.en,text,text --valid_data_path_and_name_and_type dump/raw/train_dev/text.ts.hubert,src_text,text --valid_shape_file exp/asr_stats_raw_ts_hubert_char_char/valid/text_shape.char --valid_shape_file exp/asr_stats_raw_ts_hubert_char_char/valid/src_text_shape.char --resume true --ignore_init_mismatch false --fold_length 150 --fold_length 150 --output_dir exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts --config conf/train_asr_transformer_debug.yaml --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.mfcc_km10,src_text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.hubert,src_text1,text1 --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text1,text1 --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char --ngpu 1 --multiprocessing_distributed True 
+# Started at Mon Dec 25 09:05:03 UTC 2023
+#
+/home/espnet/tools/anaconda/envs/espnet/bin/python3 /home/espnet/espnet2/bin/mt_train.py --use_preprocessor true --bpemodel none --token_type char --token_list data/token_list/char/tgt_tokens.txt --src_bpemodel none --src_token_type char --src_token_list data/token_list/char_hubert/src_tokens.txt --non_linguistic_symbols none --cleaner none --g2p none --valid_data_path_and_name_and_type dump/raw/train_dev/text.ts.en,text,text --valid_data_path_and_name_and_type dump/raw/train_dev/text.ts.hubert,src_text,text --valid_shape_file exp/asr_stats_raw_ts_hubert_char_char/valid/text_shape.char --valid_shape_file exp/asr_stats_raw_ts_hubert_char_char/valid/src_text_shape.char --resume true --ignore_init_mismatch false --fold_length 150 --fold_length 150 --output_dir exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts --config conf/train_asr_transformer_debug.yaml --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.mfcc_km10,src_text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.hubert,src_text1,text1 --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text,text --train_data_path_and_name_and_type dump/raw/train_nodev/text.ts.en,text1,text1 --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/src_text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char --train_shape_file exp/asr_stats_raw_ts_hubert_char_char/train/text_shape.char --ngpu 1 --multiprocessing_distributed True
+[aispeech] 2023-12-25 09:05:06,704 (mt:348) INFO: Vocabulary size: 22
+[aispeech] 2023-12-25 09:05:06,704 (mt:362) INFO: Source vocabulary size: 13
+[aispeech] 2023-12-25 09:05:06,879 (initialize:88) INFO: Initialize encoder.embed.conv.0.bias to zeros
+[aispeech] 2023-12-25 09:05:06,879 (initialize:88) INFO: Initialize encoder.embed.conv.2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,879 (initialize:88) INFO: Initialize encoder.embed.out.0.bias to zeros
+[aispeech] 2023-12-25 09:05:06,879 (initialize:88) INFO: Initialize encoder.encoders.0.self_attn.linear_q.bias to zeros
+[aispeech] 2023-12-25 09:05:06,879 (initialize:88) INFO: Initialize encoder.encoders.0.self_attn.linear_k.bias to zeros
+[aispeech] 2023-12-25 09:05:06,879 (initialize:88) INFO: Initialize encoder.encoders.0.self_attn.linear_v.bias to zeros
+[aispeech] 2023-12-25 09:05:06,879 (initialize:88) INFO: Initialize encoder.encoders.0.self_attn.linear_out.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.0.feed_forward.w_1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.0.feed_forward.w_2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.0.norm1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.0.norm2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.self_attn.linear_q.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.self_attn.linear_k.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.self_attn.linear_v.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.self_attn.linear_out.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.feed_forward.w_1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.feed_forward.w_2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.norm1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.encoders.1.norm2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize encoder.after_norm.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.after_norm.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.output_layer.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.self_attn.linear_q.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.self_attn.linear_k.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.self_attn.linear_v.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.self_attn.linear_out.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.src_attn.linear_q.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.src_attn.linear_k.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.src_attn.linear_v.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.src_attn.linear_out.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.feed_forward.w_1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.feed_forward.w_2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.norm1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,880 (initialize:88) INFO: Initialize decoder.decoders.0.norm2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.0.norm3.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.self_attn.linear_q.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.self_attn.linear_k.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.self_attn.linear_v.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.self_attn.linear_out.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.src_attn.linear_q.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.src_attn.linear_k.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.src_attn.linear_v.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.src_attn.linear_out.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.feed_forward.w_1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.feed_forward.w_2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.norm1.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.norm2.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize decoder.decoders.1.norm3.bias to zeros
+[aispeech] 2023-12-25 09:05:06,881 (initialize:88) INFO: Initialize ctc.ctc_lo.bias to zeros
+[aispeech] 2023-12-25 09:05:08,113 (abs_task:1268) INFO: pytorch.version=1.12.1, cuda.available=True, cudnn.version=8302, cudnn.benchmark=False, cudnn.deterministic=True
+[aispeech] 2023-12-25 09:05:08,115 (abs_task:1269) INFO: Model structure:
+ESPnetDiscreteASRModel(
+  (frontend): Embedding(
+    (embed): Sequential(
+      (0): Embedding(13, 16)
+      (1): PositionalEncoding(
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+    )
+  )
+  (encoder): TransformerEncoder(
+    (embed): Conv1dSubsampling2(
+      (conv): Sequential(
+        (0): Conv1d(16, 2, kernel_size=(3,), stride=(1,))
+        (1): ReLU()
+        (2): Conv1d(2, 2, kernel_size=(3,), stride=(2,))
+        (3): ReLU()
+      )
+      (out): Sequential(
+        (0): Linear(in_features=2, out_features=2, bias=True)
+        (1): PositionalEncoding(
+          (dropout): Dropout(p=0.1, inplace=False)
+        )
+      )
+    )
+    (encoders): MultiSequential(
+      (0): EncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_q): Linear(in_features=2, out_features=2, bias=True)
+          (linear_k): Linear(in_features=2, out_features=2, bias=True)
+          (linear_v): Linear(in_features=2, out_features=2, bias=True)
+          (linear_out): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.0, inplace=False)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=2, out_features=2, bias=True)
+          (w_2): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (activation): ReLU()
+        )
+        (norm1): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (norm2): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (1): EncoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_q): Linear(in_features=2, out_features=2, bias=True)
+          (linear_k): Linear(in_features=2, out_features=2, bias=True)
+          (linear_v): Linear(in_features=2, out_features=2, bias=True)
+          (linear_out): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.0, inplace=False)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=2, out_features=2, bias=True)
+          (w_2): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (activation): ReLU()
+        )
+        (norm1): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (norm2): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (after_norm): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+  )
+  (decoder): TransformerDecoder(
+    (embed): Sequential(
+      (0): Embedding(22, 2)
+      (1): PositionalEncoding(
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+    )
+    (after_norm): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+    (output_layer): Linear(in_features=2, out_features=22, bias=True)
+    (decoders): MultiSequential(
+      (0): DecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_q): Linear(in_features=2, out_features=2, bias=True)
+          (linear_k): Linear(in_features=2, out_features=2, bias=True)
+          (linear_v): Linear(in_features=2, out_features=2, bias=True)
+          (linear_out): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.0, inplace=False)
+        )
+        (src_attn): MultiHeadedAttention(
+          (linear_q): Linear(in_features=2, out_features=2, bias=True)
+          (linear_k): Linear(in_features=2, out_features=2, bias=True)
+          (linear_v): Linear(in_features=2, out_features=2, bias=True)
+          (linear_out): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.0, inplace=False)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=2, out_features=2, bias=True)
+          (w_2): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (activation): ReLU()
+        )
+        (norm1): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (norm2): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (norm3): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+      (1): DecoderLayer(
+        (self_attn): MultiHeadedAttention(
+          (linear_q): Linear(in_features=2, out_features=2, bias=True)
+          (linear_k): Linear(in_features=2, out_features=2, bias=True)
+          (linear_v): Linear(in_features=2, out_features=2, bias=True)
+          (linear_out): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.0, inplace=False)
+        )
+        (src_attn): MultiHeadedAttention(
+          (linear_q): Linear(in_features=2, out_features=2, bias=True)
+          (linear_k): Linear(in_features=2, out_features=2, bias=True)
+          (linear_v): Linear(in_features=2, out_features=2, bias=True)
+          (linear_out): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.0, inplace=False)
+        )
+        (feed_forward): PositionwiseFeedForward(
+          (w_1): Linear(in_features=2, out_features=2, bias=True)
+          (w_2): Linear(in_features=2, out_features=2, bias=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (activation): ReLU()
+        )
+        (norm1): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (norm2): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (norm3): LayerNorm((2,), eps=1e-12, elementwise_affine=True)
+        (dropout): Dropout(p=0.1, inplace=False)
+      )
+    )
+  )
+  (criterion_mt): LabelSmoothingLoss(
+    (criterion): KLDivLoss()
+  )
+  (ctc): CTC(
+    (ctc_lo): Linear(in_features=2, out_features=22, bias=True)
+    (ctc_loss): CTCLoss()
+  )
+)
+
+Model summary:
+    Class Name: ESPnetDiscreteASRModel
+    Total Number of model parameters: 742.00  
+    Number of trainable parameters: 742.00   (100.0%)
+    Size: 2.97 KB
+    Type: torch.float32
+[aispeech] 2023-12-25 09:05:08,115 (abs_task:1272) INFO: Optimizer:
+Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    eps: 1e-08
+    foreach: None
+    initial_lr: 0.005
+    lr: 0.00125
+    maximize: False
+    weight_decay: 0
+)
+[aispeech] 2023-12-25 09:05:08,115 (abs_task:1273) INFO: Scheduler: WarmupLR(warmup_steps=4)
+[aispeech] 2023-12-25 09:05:08,115 (abs_task:1282) INFO: Saving the configuration in exp/asr_train_asr_transformer_debug_raw_hubert_char_ts_char_ts/config.yaml
+Traceback (most recent call last):
+  File "/home/espnet/tools/anaconda/envs/espnet/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/espnet/tools/anaconda/envs/espnet/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/home/espnet/espnet2/bin/mt_train.py", line 23, in <module>
+    main()
+  File "/home/espnet/espnet2/bin/mt_train.py", line 19, in main
+    MTTask.main(cmd=cmd)
+  File "/home/espnet/espnet2/tasks/abs_task.py", line 1117, in main
+    cls.main_worker(args)
+  File "/home/espnet/espnet2/tasks/abs_task.py", line 1363, in main_worker
+    train_iter_factory = cls.build_iter_factory(
+  File "/home/espnet/espnet2/tasks/abs_task.py", line 1580, in build_iter_factory
+    return cls.build_sequence_iter_factory(
+  File "/home/espnet/espnet2/tasks/abs_task.py", line 1620, in build_sequence_iter_factory
+    cls.check_task_requirements(
+  File "/home/espnet/espnet2/tasks/abs_task.py", line 1087, in check_task_requirements
+    raise RuntimeError(
+RuntimeError: The data-name must be one of ('src_text', 'text') for MTTask: "src_text1" is not allowed.
+If you intend to use an additional input, modify "MTTask.required_data_names()" or "MTTask.optional_data_names()". Otherwise you need to set --allow_variable_data_keys true 
+# Accounting: time=5 threads=1
+# Ended (code 1) at Mon Dec 25 09:05:08 UTC 2023, elapsed time 5 seconds
+

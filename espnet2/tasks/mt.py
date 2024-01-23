@@ -290,23 +290,25 @@ class MTTask(AbsTask):
         if args.use_preprocessor:
             retval = MutliTokenizerCommonPreprocessor(
                 train=train,
-                token_type=[args.token_type, args.src_token_type],
-                token_list=[args.token_list, args.src_token_list],
-                bpemodel=[args.bpemodel, args.src_bpemodel],
+                token_type=[args.token_type, args.src_token_type, args.src_token_type],
+                token_list=[args.token_list, args.src_token_list, args.src_token_list],
+                bpemodel=[args.bpemodel, args.src_bpemodel, args.src_bpemodel],
                 non_linguistic_symbols=args.non_linguistic_symbols,
                 text_cleaner=args.cleaner,
                 g2p_type=args.g2p,
-                text_name=["text", "src_text"],
+                text_name=["text", "src_text", "hubert"],
                 tokenizer_encode_conf=[
                     args.tokenizer_encode_conf,
                     args.src_tokenizer_encode_conf,
+                     args.src_tokenizer_encode_conf,
                 ]
                 if train
-                else [dict(), dict()],
+                else [dict(), dict(),dict()],
             )
         else:
             retval = None
         assert check_return_type(retval)
+        logging.info("bpemodelvaluesi  {retval}")
         return retval
 
     @classmethod
@@ -314,7 +316,7 @@ class MTTask(AbsTask):
         cls, train: bool = True, inference: bool = False
     ) -> Tuple[str, ...]:
         if not inference:
-            retval = ("src_text", "text")
+            retval = ("src_text", "text",)
         else:
             # Recognition mode
             retval = ("src_text",)
@@ -325,9 +327,10 @@ class MTTask(AbsTask):
         cls, train: bool = True, inference: bool = False
     ) -> Tuple[str, ...]:
         if not inference:
-            retval = ()
+            retval = ("src_text", "text","hubert")
+            # retval = ()
         else:
-            retval = ()
+            retval = ("hubert",)
         assert check_return_type(retval)
         return retval
 
